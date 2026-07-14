@@ -10,6 +10,18 @@ ClassPulse is an end-to-end, sub-second latency IoT telemetry system designed to
             │
             ▼ (Direct Low-Latency WebSockets Stream)
        [ ClassPulse Dashboard UI ] (Dynamic Chart.js & Tailwind CSS)
+
+## 🔌 Hardware Wiring Guide
+
+To build this physically, connect your ESP32 to the sensors using the following pin layout:
+
+| Component | Sensor Pin | ESP32 Pin | Description |
+| :--- | :--- | :--- | :--- |
+| **DHT11** | VCC | 3.3V | Power |
+| **DHT11** | GND | GND | Ground |
+| **DHT11** | DATA | GPIO 23 | Temperature & Humidity Data |
+| **Break-Beam** | OUT | GPIO 18 | Infrared Count Trigger |
+
 🚀 Key Features
 Sub-Second Live WebSockets Pipeline: Bypasses standard polling lag by subscribing to a direct Postgres replication stream, rendering environmental changes on the dashboard the instant a person enters or leaves the room.
 
