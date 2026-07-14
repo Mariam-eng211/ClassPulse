@@ -12,12 +12,12 @@
 const char* CURRENT_NODE_ID = "Node 01";
 
 // Network Details
-const char* ssid = "Mariam";
-const char* password = "japozundu";
+const char* ssid = "....";
+const char* password = "....";
 
 // Supabase Endpoint Configuration
-const char* supabase_url = "https://zbemoaxplwzmjuaythzq.supabase.co/rest/v1/desk_telemetry";
-const char* supabase_key = "sb_publishable_Bk5pDl547Wx9tRoRonqCQQ_PbrhgsVN";
+const char* supabase_url = "....";
+const char* supabase_key = "....";
 
 DHT dht(DHTPIN, DHTTYPE);
 
