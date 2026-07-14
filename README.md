@@ -1,3 +1,7 @@
+
+
+https://github.com/user-attachments/assets/82f5839e-2d6d-4922-b19d-d0767d2e17f4
+
 # ClassPulse ── Live IoT Microclimate & Room Crowding Monitor
 
 ClassPulse is an end-to-end, sub-second latency IoT telemetry system designed to monitor classroom microclimates and occupant density in real time. By linking physical ESP32-connected sensors to a cloud database and streaming live metrics directly to a modern, browser-based dashboard, ClassPulse acts as an automated environmental defense mechanism—calculating a dynamic Stagnation Index to alert administrators when a space requires physical ventilation.
