@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClassPulse // IoT Microclimate & Crowding Monitor</title>
+    <!-- Tailwind CSS for Styling -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Chart.js for the Analytics Engine -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons for clean asset visuals -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .pulse-indicator { animation: pulse-soft 2s infinite; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-teal-500/30">
+
+    <div class="flex flex-1 overflow-hidden">
+        <!-- MULTI-NODE SELECTOR (SCALABILITY SIDEBAR) -->
+        <aside class="w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col gap-4 hidden md:flex">
+            <div class="flex items-center gap-2 px-2 py-3 border-b border-slate-800">
+                <i data-lucide="layers" class="text-teal-400 w-5 h-5"></i>
+                <span class="font-bold tracking-wider text-sm uppercase text-slate-400">Node Architecture</span>
+            </div>
+            <nav class="flex flex-col gap-2 flex-1 mt-2">
+                <button class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium bg-teal-950/40 text-teal-300 border border-teal-800/60 transition-all cursor-pointer">
+                    <span class="flex items-center gap-2"><i data-lucide="layout-dashboard" class="w-4 h-4"></i> Node 01: Classroom A</span>
+                    <span class="w-2 h-2 rounded-full bg-teal-400 shadow-[0_0_8px_#2dd4bf]"></span>
+                </button>
+                <button class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-all opacity-50 cursor-not-allowed">
+                    <span class="flex items-center gap-2"><i data-lucide="door-closed" class="w-4 h-4"></i> Node 02: Cafeteria</span>
+                    <span class="text-xs text-slate-600">Offline</span>
+                </button>
+                <button class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-all opacity-50 cursor-not-allowed">
+                    <span class="flex items-center gap-2"><i data-lucide="library" class="w-4 h-4"></i> Node 03: Main Library</span>
+                    <span class="text-xs text-slate-600">Offline</span>
+                </button>
+            </nav>
+            <div class="p-3 bg-slate-950/60 border border-slate-800 rounded-lg text-xs text-slate-500">
+                Framework built for multi-asset horizontal deployment.
+            </div>
+        </aside>
+
+        <!-- MAIN INTERFACE MAIN BODY -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 max-w-7xl mx-auto w-full">
+            
+            <!-- SYSTEM STATUS HEADER -->
+            <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-slate-900 border border-slate-800 rounded-xl shadow-lg">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-teal-950/80 border border-teal-500/30 rounded-xl shadow-[0_0_15px_rgba(45,212,191,0.1)]">
+                        <i data-lucide="activity" class="text-teal-400 w-6 h-6 animate-pulse"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <!-- Integrated ClassPulse App Brand Name -->
+                            <span class="text-xs font-black tracking-widest text-teal-300 uppercase font-mono px-2 py-0.5 bg-teal-950/90 border border-teal-700/80 rounded-md shadow-[0_0_10px_rgba(45,212,191,0.15)]">ClassPulse</span>
+                            <h1 class="text-lg font-bold tracking-tight text-slate-100">Node 01: Active</h1>
+                            <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 pulse-indicator shadow-[0_0_10px_#10b981]"></span>
+                        </div>
+                        <p class="text-xs text-slate-400 tracking-wide font-mono">ID: desk_telemetry // core_esp32</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4 sm:self-center self-start bg-slate-950 px-4 py-2 border border-slate-800 rounded-lg">
+                    <div class="flex items-center gap-2 text-slate-400 font-mono text-sm">
+                        <i id="wifi-icon" data-lucide="wifi" class="w-4 h-4 text-emerald-400"></i>
+                        <span id="ws-status">Supabase WebSockets: Listening</span>
+                    </div>
+                    <div class="h-4 w-px bg-slate-800"></div>
+                    <div id="live-clock" class="text-teal-400 font-mono font-medium tracking-wider text-sm">00:00:00</div>
+                </div>
+            </header>
+
+            <!-- TELEMETRY GRID (TOP ROW) -->
+            <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Temp Card -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-md flex flex-col justify-between relative overflow-hidden group">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-bold tracking-wider text-slate-400 uppercase">Temperature</p>
+                            <p class="text-xs text-slate-500 mt-0.5 font-mono">Sensor: Temperature (DHT11)</p>
+                        </div>
+                        <i data-lucide="thermometer" class="text-orange-400 w-5 h-5"></i>
+                    </div>
+                    <div class="mt-6 flex items-baseline gap-1">
+                        <span id="temp-display" class="text-4xl font-extrabold tracking-tight text-slate-100 font-mono">--.-</span>
+                        <span class="text-xl font-bold text-slate-400">°C</span>
+                    </div>
+                </div>
+                <!-- Humidity Card -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-md flex flex-col justify-between relative overflow-hidden group">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-bold tracking-wider text-slate-400 uppercase">Humidity</p>
+                            <p class="text-xs text-slate-500 mt-0.5 font-mono">Sensor: Humidity (DHT11)</p>
+                        </div>
+                        <i data-lucide="droplets" class="text-blue-400 w-5 h-5"></i>
+                    </div>
+                    <div class="mt-6 flex items-baseline gap-1">
+                        <span id="humidity-display" class="text-4xl font-extrabold tracking-tight text-slate-100 font-mono">--.-</span>
+                        <span class="text-xl font-bold text-slate-400">%</span>
+                    </div>
+                </div>
+                <!-- Room Crowding Card -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-md flex flex-col justify-between relative overflow-hidden group">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-bold tracking-wider text-slate-400 uppercase">Room Crowding</p>
+                            <p class="text-xs text-slate-500 mt-0.5 font-mono">Sensor: Crowd Counter</p>
+                        </div>
+                        <i data-lucide="users" class="text-teal-400 w-5 h-5"></i>
+                    </div>
+                    <div class="mt-6 flex items-baseline gap-1">
+                        <span id="pax-display" class="text-4xl font-extrabold tracking-tight text-slate-100 font-mono">--</span>
+                        <span class="text-lg font-semibold text-slate-400 font-mono">/ <span id="pax-limit-label">35</span> PAX</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CRITICAL HERO MODULE: STAGNATION INDEX -->
+            <section id="stagnation-hero" class="bg-slate-900 border border-slate-800 transition-all duration-500 rounded-xl p-6 shadow-xl relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl pointer-events-none transition-all duration-500" id="hero-glow"></div>
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                    <div class="space-y-2 max-w-xl">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold tracking-widest text-teal-400 uppercase font-mono px-2 py-0.5 bg-teal-950/80 border border-teal-800/60 rounded" id="hero-badge">Air Quality Metric</span>
+                            <span id="stagnation-status-text" class="text-xs font-mono text-slate-400">• Dynamic Baseline Active</span>
+                        </div>
+                        <h2 class="text-2xl font-black tracking-tight uppercase">Stagnation Index</h2>
+                        <p class="text-sm text-slate-400 leading-relaxed">
+                            Compounded mathematical telemetry evaluating real-time spatial safety coefficients. Tracks localized environmental stagnation based on capacity vs. heat dissipations.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-4 self-start md:self-center bg-slate-950/80 border border-slate-800 p-4 rounded-xl min-w-[200px] justify-center">
+                        <div class="text-center">
+                            <div class="text-5xl font-black font-mono tracking-tighter text-slate-100"><span id="stagnation-pct">0</span>%</div>
+                            <div class="text-[10px] uppercase font-bold tracking-widest text-slate-500 mt-1">Stagnation Load</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MIDDLE INTERACTIVE CONTROLS SECTION -->
+            <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- BI-DIRECTIONAL HARDWARE REMOTE PANEL -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col gap-5 shadow-md">
+                    <div class="flex items-center gap-2 pb-2 border-b border-slate-800">
+                        <i data-lucide="sliders" class="w-4 h-4 text-purple-400"></i>
+                        <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300">Bi-Directional Thresholds</h3>
+                    </div>
+                    <!-- Control 1 -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-xs font-mono">
+                            <span class="text-slate-400">Max Capacity Alarm Limit</span>
+                            <span class="text-purple-400 font-bold" id="slider-cap-val">35 PAX</span>
+                        </div>
+                        <input type="range" id="slider-cap" min="5" max="100" value="35" class="w-full accent-purple-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+                    </div>
+                    <!-- Control 2 -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-xs font-mono">
+                            <span class="text-slate-400">Temperature Threshold</span>
+                            <span class="text-purple-400 font-bold" id="slider-temp-val">30°C</span>
+                        </div>
+                        <input type="range" id="slider-temp" min="15" max="45" value="30" class="w-full accent-purple-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+                    </div>
+                    
+                    <!-- SYSTEM DATA CLEAR RESET BUTTON -->
+                    <div class="pt-3 border-t border-slate-800/80 mt-1">
+                        <button id="btn-clear-restart" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-teal-400 hover:text-teal-300 text-xs font-mono font-bold py-2.5 px-3 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 tracking-wide shadow-md">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                            [RESET ENGINE DATA]
+                        </button>
+                    </div>
+                </div>
+
+                <!-- PREDICTIVE STAGNATION HORIZON (ML MACHINE SIMULATION) -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between shadow-md relative overflow-hidden">
+                    <div class="flex items-center gap-2 pb-2 border-b border-slate-800">
+                        <i data-lucide="trending-up" class="w-4 h-4 text-pink-400"></i>
+                        <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300">Predictive Horizon (ML)</h3>
+                    </div>
+                    <div class="my-4 space-y-2">
+                        <div class="text-xs text-slate-400">Time to Critical Stagnation:</div>
+                        <div class="text-3xl font-black font-mono tracking-tight text-slate-100" id="horizon-timer">
+                            Stable State
+                        </div>
+                        <p class="text-xs text-slate-500 leading-normal" id="horizon-desc">
+                            Sensors indicate stable baseline microclimate. Rate of change (velocity) is regular.
+                        </p>
+                    </div>
+                    <div class="bg-slate-950 p-2 border border-slate-800 rounded text-[10px] font-mono text-slate-500">
+                        Engine: Dynamic Mathematical Rate-of-Change Velocity Vector
+                    </div>
+                </div>
+
+                <!-- AUTOMATED SYSTEM DIAGNOSTICS LOG -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col shadow-md">
+                    <div class="flex items-center gap-2 pb-2 border-b border-slate-800">
+                        <i data-lucide="terminal" class="w-4 h-4 text-amber-400"></i>
+                        <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300">System Diagnostics</h3>
+                    </div>
+                    <div class="flex-1 min-h-[100px] bg-slate-950 border border-slate-800 rounded-lg p-3 my-3 font-mono text-xs flex flex-col gap-2 overflow-y-auto" id="diagnostic-log">
+                        <div class="text-emerald-400 select-none">[SYSTEM INITIALIZED] Ready...</div>
+                        <div class="text-slate-500" id="diagnostic-output">STATUS: Normal Baseline Environmental State // All Systems nominal.</div>
+                    </div>
+                    <div class="text-[10px] font-mono text-slate-500 flex justify-between">
+                        <span>Parser: Active</span>
+                        <span>Auto-Refreshing</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ANALYTICS ENGINE GRAPH (BOTTOM ROW) -->
+            <section class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-800 mb-4">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="activity" class="w-4 h-4 text-teal-400"></i>
+                        <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300">ClassPulse Historical Analytics (Data Over Time)</h3>
+                    </div>
+                    <div class="flex items-center gap-3 font-mono text-xs text-slate-400">
+                        <div class="flex items-center gap-1">
+                            <span class="w-2.5 h-1 bg-teal-400 rounded-sm"></span> Stagnation Load (%)
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="w-2.5 h-1 bg-pink-400 rounded-sm"></span> Room Occupancy (PAX)
+                        </div>
+                    </div>
+                </div>
+                <div class="h-64 w-full">
+                    <canvas id="velocityChart"></canvas>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- MAIN DASHBOARD ARCHITECTURE SCRIPT -->
+    <script>
+        // 1. SUPABASE CLIENT SETUPS
+        // ==========================================
+        const SUPABASE_URL = "https://zbemoaxplwzmjuaythzq.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_Bk5pDl547Wx9tRoRonqCQQ_PbrhgsVN";
+        
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let realtimeChannel = null;
+
+        // 2. LOGIC CONFIGURATIONS & LOCAL VARS
+        // ==========================================
+        let maxCapacityLimit = 35;
+        let targetTempLimit = 30;
+        let currentPaxCount = null;
+
+        // 3. CHART INITIALIZATION (Historical Dynamic Rendering Engine)
+        // ==========================================
+        const ctx = document.getElementById('velocityChart').getContext('2d');
+        const velocityChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [], // Populated dynamically with timestamps
+                datasets: [
+                    {
+                        label: 'Stagnation Load',
+                        data: [], // Dynamically updated
+                        borderColor: '#2dd4bf',
+                        backgroundColor: 'rgba(45, 212, 191, 0.04)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Room Occupancy',
+                        data: [], // Dynamically updated
+                        borderColor: '#f472b6',
+                        backgroundColor: 'rgba(244, 114, 182, 0.04)',
+                        fill: false,
+                        tension: 0.3,
+                        borderWidth: 2,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        grid: { color: '#1e293b' },
+                        ticks: { color: '#64748b', font: { family: 'monospace' } },
+                        min: 0, max: 100
+                    },
+                    y1: {
+                        position: 'right',
+                        grid: { drawOnChartArea: false },
+                        ticks: { color: '#64748b', font: { family: 'monospace' } }
+                    },
+                    x: {
+                        grid: { color: '#1e293b' },
+                        ticks: { color: '#64748b', font: { family: 'monospace' } }
+                    }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // 4. BI-DIRECTIONAL REMOTE SLIDERS MOCK ENGINE
+        // ==========================================
+        const sliderCap = document.getElementById('slider-cap');
+        const sliderCapVal = document.getElementById('slider-cap-val');
+        const paxLimitLabel = document.getElementById('pax-limit-label');
+
+        sliderCap.addEventListener('input', (e) => {
+            maxCapacityLimit = parseInt(e.target.value);
+            sliderCapVal.textContent = maxCapacityLimit + " PAX";
+            paxLimitLabel.textContent = maxCapacityLimit;
+            
+            const currentTemp = parseFloat(document.getElementById('temp-display').textContent);
+            const currentHumidity = parseFloat(document.getElementById('humidity-display').textContent);
+            processStagnationEngine(currentTemp, currentHumidity, false);
+        });
+
+        const sliderTemp = document.getElementById('slider-temp');
+        const sliderTempVal = document.getElementById('slider-temp-val');
+
+        sliderTemp.addEventListener('input', (e) => {
+            targetTempLimit = parseInt(e.target.value);
+            sliderTempVal.textContent = targetTempLimit + "°C";
+            
+            const currentTemp = parseFloat(document.getElementById('temp-display').textContent);
+            const currentHumidity = parseFloat(document.getElementById('humidity-display').textContent);
+            processStagnationEngine(currentTemp, currentHumidity, false);
+        });
+
+        // 5. ABSOLUTE SYSTEM DATA REBOOT RESETER (DIRECT CLOUD WRITE INTEGRATION)
+        // ==========================================
+        document.getElementById('btn-clear-restart').addEventListener('click', async () => {
+            // 1. Commit a clean environmental frame row to the Supabase backend database
+            const { error } = await supabaseClient
+                .from('desk_telemetry')
+                .insert([
+                    { temperature: 22.0, humidity: 45.0, room_count: 0, stagnation_flag: false }
+                ]);
+
+            if (error) {
+                console.error("Cloud data payload submission fault encountered:", error);
+                return;
+            }
+
+            // 2. Clear visual dashboard metrics back to standard initialization values
+            currentPaxCount = 0;
+            document.getElementById('pax-display').textContent = "0";
+            document.getElementById('temp-display').textContent = "22.0";
+            document.getElementById('humidity-display').textContent = "45.0";
+            
+            processStagnationEngine(22.0, 45.0, false);
+
+            // 3. Inject transaction status update logging item to diagnostic board
+            const logBox = document.getElementById('diagnostic-log');
+            const quickLog = document.createElement('div');
+            quickLog.className = "text-teal-400 font-bold select-none";
+            quickLog.textContent = `[${new Date().toLocaleTimeString()}] RESET DATA PACKET COMMITTED TO SUPABASE STREAM`;
+            logBox.appendChild(quickLog);
+            logBox.scrollTop = logBox.scrollHeight;
+        });
+
+        // 6. CORE COMPUTATIONAL TELEMETRY FORMULA (THE VIBE ENGINE)
+        // ==========================================
+        function processStagnationEngine(temp, humidity, isStagnantFlag) {
+            const heroCard = document.getElementById('stagnation-hero');
+            const heroBadge = document.getElementById('hero-badge');
+            const heroGlow = document.getElementById('hero-glow');
+            const statusText = document.getElementById('stagnation-status-text');
+            const diagnostics = document.getElementById('diagnostic-output');
+            const horizonTimer = document.getElementById('horizon-timer');
+            const horizonDesc = document.getElementById('horizon-desc');
+
+            if(isNaN(temp) || temp === null) {
+                document.getElementById('stagnation-pct').textContent = "0";
+                heroCard.className = "bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl relative overflow-hidden transition-all duration-500";
+                heroBadge.className = "text-xs font-bold tracking-widest text-teal-400 uppercase font-mono px-2 py-0.5 bg-teal-950/80 border border-teal-800/60 rounded";
+                heroGlow.className = "absolute top-0 right-0 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl pointer-events-none transition-all duration-500";
+                statusText.textContent = "• Telemetry Standby Ready";
+                statusText.className = "text-xs font-mono text-slate-500";
+                diagnostics.textContent = "STATUS: Telemetry variables cleared. System awaiting fresh data frame packet...";
+                diagnostics.className = "text-slate-500 italic";
+                horizonTimer.textContent = "Standby";
+                horizonTimer.className = "text-3xl font-black font-mono tracking-tight text-slate-500";
+                horizonDesc.textContent = "System memory initialized. Awaiting new telemetry vectors.";
+                return 0;
+            }
+
+            if (currentPaxCount === null) {
+                currentPaxCount = Math.floor(maxCapacityLimit * 0.65);
+                document.getElementById('pax-display').textContent = currentPaxCount;
+            }
+
+            let tempFactor = Math.max(0, (temp / targetTempLimit) * 40);
+            let capacityFactor = Math.max(0, (currentPaxCount / maxCapacityLimit) * 60);
+            let stagnationLoad = Math.min(100, Math.round(tempFactor + capacityFactor));
+
+            if(isStagnantFlag === true) {
+                stagnationLoad = Math.max(stagnationLoad, 75);
+            }
+
+            document.getElementById('stagnation-pct').textContent = stagnationLoad;
+
+            if (stagnationLoad >= 75) {
+                heroCard.className = "bg-rose-950/60 border-2 border-rose-500 rounded-xl p-6 shadow-2xl relative overflow-hidden transition-all duration-500 shadow-rose-950/40";
+                heroBadge.className = "text-xs font-bold tracking-widest text-rose-200 uppercase font-mono px-2 py-0.5 bg-rose-800/80 border border-rose-600 rounded animate-pulse";
+                heroGlow.className = "absolute top-0 right-0 w-96 h-96 bg-rose-500/20 rounded-full blur-3xl pointer-events-none transition-all duration-500";
+                statusText.textContent = "• CRITICAL AIR STAGNATION DETECTED";
+                statusText.className = "text-xs font-mono text-rose-400 font-bold";
+                
+                diagnostics.textContent = "CRITICAL: Stagnation Index Breach // Activating Auxiliary Ventilation Request. PLEASE OPEN CLASSROOM DOOR IMMEDIATELY.";
+                diagnostics.className = "text-rose-400 font-bold animate-pulse";
+
+                horizonTimer.textContent = "04 Minutes";
+                horizonTimer.className = "text-3xl font-black font-mono tracking-tight text-rose-400";
+                horizonDesc.textContent = "Critical discomfort index horizon closing. Room thermal expansion vectoring past standard dissipation.";
+            } else if (stagnationLoad >= 50) {
+                heroCard.className = "bg-amber-950/40 border border-amber-600 rounded-xl p-6 shadow-xl relative overflow-hidden transition-all duration-500";
+                heroBadge.className = "text-xs font-bold tracking-widest text-amber-300 uppercase font-mono px-2 py-0.5 bg-amber-900/60 border border-amber-700 rounded";
+                heroGlow.className = "absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none transition-all duration-500";
+                statusText.textContent = "• Elevated Room Load Profile";
+                statusText.className = "text-xs font-mono text-amber-400";
+
+                diagnostics.textContent = "WARNING: Temperature or crowding approaching high baseline. Consider opening windows shortly.";
+                diagnostics.className = "text-amber-400";
+
+                horizonTimer.textContent = "18 Minutes";
+                horizonTimer.className = "text-3xl font-black font-mono tracking-tight text-amber-400";
+                horizonDesc.textContent = "Approaching discomfort threshold. Room velocity calculations display consistent steady saturation upward.";
+            } else {
+                heroCard.className = "bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl relative overflow-hidden transition-all duration-500";
+                heroBadge.className = "text-xs font-bold tracking-widest text-teal-400 uppercase font-mono px-2 py-0.5 bg-teal-950/80 border border-teal-800/60 rounded";
+                heroGlow.className = "absolute top-0 right-0 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl pointer-events-none transition-all duration-500";
+                statusText.textContent = "• Dynamic Baseline Active";
+                statusText.className = "text-xs font-mono text-slate-400";
+
+                diagnostics.textContent = "STATUS: Normal Baseline Environmental State // All Systems nominal.";
+                diagnostics.className = "text-slate-400";
+
+                horizonTimer.textContent = "Stable State";
+                horizonTimer.className = "text-3xl font-black font-mono tracking-tight text-slate-100";
+                horizonDesc.textContent = "Sensors indicate stable baseline microclimate. Rate of change (velocity) is regular.";
+            }
+
+            return stagnationLoad;
+        }
+
+        // 7. REAL-TIME DATA STREAM INTERCEPTOR
+        // ==========================================
+        async function fetchInitialTelemetry() {
+            try {
+                // Query last 10 records for historical trendlines
+                const { data, error } = await supabaseClient
+                    .from('desk_telemetry')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+
+                if (error) throw error;
+                if (data && data.length > 0) {
+                    // Reverse the array to map oldest first on the chart
+                    const chronologicalData = [...data].reverse();
+
+                    velocityChart.data.labels = [];
+                    velocityChart.data.datasets[0].data = [];
+                    velocityChart.data.datasets[1].data = [];
+
+                    chronologicalData.forEach(row => {
+                        const rowTime = row.created_at 
+                            ? new Date(row.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                            : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                        // Compute the stagnation index load for each history entry
+                        let tempFactor = Math.max(0, (row.temperature / targetTempLimit) * 40);
+                        let capacityFactor = Math.max(0, (row.room_count / maxCapacityLimit) * 60);
+                        let load = Math.min(100, Math.round(tempFactor + capacityFactor));
+                        if (row.stagnation_flag === true) load = Math.max(load, 75);
+
+                        velocityChart.data.labels.push(rowTime);
+                        velocityChart.data.datasets[0].data.push(load);
+                        velocityChart.data.datasets[1].data.push(row.room_count);
+                    });
+
+                    velocityChart.update();
+
+                    // Render latest row on the main metrics cards
+                    renderTelemetryRow(data[0], false);
+                }
+            } catch (err) {
+                console.warn("Database sync notice: Verify table fields align with initial mock telemetry payload.", err);
+            }
+        }
+
+        function renderTelemetryRow(payload, isRealtime = false) {
+            const temperature = payload.temperature;
+            const humidity = payload.humidity;
+            currentPaxCount = payload.room_count; 
+            const isStagnant = payload.stagnation_flag;
+
+            document.getElementById('temp-display').textContent = temperature !== null ? temperature : "--.-";
+            document.getElementById('humidity-display').textContent = humidity !== null ? humidity : "--.-";
+            document.getElementById('pax-display').textContent = currentPaxCount !== null ? currentPaxCount : "0";
+
+            // Run calculations and dynamically determine final index percentages
+            const currentLoad = processStagnationEngine(temperature, humidity, isStagnant);
+
+            // Instant dynamic graph push for live tracking
+            if (isRealtime) {
+                const nowString = payload.created_at 
+                    ? new Date(payload.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                    : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                velocityChart.data.labels.push(nowString);
+                velocityChart.data.datasets[0].data.push(currentLoad);
+                velocityChart.data.datasets[1].data.push(currentPaxCount);
+
+                // Keep sliding limit capped to the last 12 data frames to keep layout tidy
+                if (velocityChart.data.labels.length > 12) {
+                    velocityChart.data.labels.shift();
+                    velocityChart.data.datasets[0].data.shift();
+                    velocityChart.data.datasets[1].data.shift();
+                }
+                
+                // Zero-delay rendering pass to show updates instantly
+                velocityChart.update('active');
+            }
+        }
+
+        // SUPABASE REALTIME PIPELINE SUBSCRIBE LISTENER
+        function initializeRealtimeConnection() {
+            realtimeChannel = supabaseClient
+                .channel('schema-db-changes')
+                .on('postgres_changes', 
+                    { event: 'INSERT', schema: 'public', table: 'desk_telemetry' }, 
+                    (payload) => {
+                        console.log('Telemetry payload intercepted:', payload.new);
+                        
+                        // Set isRealtime update to TRUE to immediately re-draw the dynamic historical charts
+                        renderTelemetryRow(payload.new, true);
+                        
+                        const wsBadge = document.getElementById('ws-status');
+                        wsBadge.textContent = "Data Ingested Instantly";
+                        wsBadge.className = "text-teal-400 transition-all font-bold";
+                        setTimeout(() => {
+                            wsBadge.textContent = "Supabase WebSockets: Listening";
+                            wsBadge.className = "text-emerald-400 transition-all font-normal";
+                        }, 1200);
+                    }
+                )
+                .subscribe();
+        }
+
+        // 8. INTERFACE REFRESH UTILITIES
+        // ==========================================
+        function startSystemClock() {
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('live-clock').textContent = now.toTimeString().split(' ')[0];
+            }, 1000);
+        }
+
+        // RUN ENGINE ON DOM READINESS
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            startSystemClock();
+            fetchInitialTelemetry();
+            initializeRealtimeConnection();
+        });
+    </script>
+</body>
+</html>
