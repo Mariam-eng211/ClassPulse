@@ -11,7 +11,7 @@ ClassPulse is an end-to-end, sub-second latency IoT telemetry system designed to
             ▼ (Direct Low-Latency WebSockets Stream)
        [ ClassPulse Dashboard UI ] (Dynamic Chart.js & Tailwind CSS)
 
-## 🔌 Hardware Wiring Guide
+##  Hardware Wiring Guide
 
 To build this physically, connect your ESP32 to the sensors using the following pin layout:
 
@@ -22,7 +22,7 @@ To build this physically, connect your ESP32 to the sensors using the following 
 | **DHT11** | DATA | GPIO 23 | Temperature & Humidity Data |
 | **Break-Beam** | OUT | GPIO 18 | Infrared Count Trigger |
 
-🚀 Key Features
+ Key Features
 Sub-Second Live WebSockets Pipeline: Bypasses standard polling lag by subscribing to a direct Postgres replication stream, rendering environmental changes on the dashboard the instant a person enters or leaves the room.
 
 Dynamic Stagnation Load Engine: Real-time risk mitigation that evaluates spatial safety thresholds using a custom weight-based mathematical logic.
@@ -33,7 +33,7 @@ Bi-Directional Configuration Controls: Front-end interactive sliders allow admin
 
 Direct Cloud-Write Intercept Reset: A localized reset button targets a direct write command back to the Supabase database to clear metrics, instantly broadcasted to all active receiver nodes.
 
-🧮 Mathematical Model: The Stagnation Index
+Mathematical Model: The Stagnation Index
 To evaluate classroom safety, ClassPulse calculates an aggregate Stagnation Index representing the cumulative thermodynamic and occupational load of the space:
 
 Stagnation Load (%) = Minimum of 100 or ((Actual Temp / Target Temp) * 40) + ((Actual Pax / Max Pax Limit) * 60)
@@ -46,14 +46,14 @@ Critical Breach: 75% or higher Load (Auxiliary ventilation required immediately)
 
 Hardware Override Warning: If the physical system triggers a critical stagnation hardware flag, the index automatically clamps to a critical baseline of 75%.
 
-💻 Tech Stack
+ Tech Stack
 Hardware/Simulation Engine: ESP32 Microcontroller, DHT11 (Temperature & Humidity), Infrared Break-Beam Sensor / Micro-switch (Simulated Crowd Counter).
 
 Backend & Infrastructure: Supabase (PostgreSQL with Realtime WebSockets enabled).
 
 Frontend Dashboard: HTML5, CSS3, Tailwind CSS (V4), Vanilla JS (ES6+), Chart.js, Lucide Icons.
 
-🗄️ Database Schema
+ Database Schema
 The system streams data frames into a table named desk_telemetry with the following structure:
 
 id (bigint): Auto-incrementing unique packet identifier
@@ -68,7 +68,7 @@ room_count (integer): Active headcount inside the classroom node (PAX)
 
 stagnation_flag (boolean): Hardware state override flag for forced critical alerts
 
-🛠️ Quick Start & Setup
+ Quick Start & Setup
 1. Clone the Repository
 Bash
 git clone [https://github.com/yourusername/ClassPulse.git](https://github.com/yourusername/ClassPulse.git)
